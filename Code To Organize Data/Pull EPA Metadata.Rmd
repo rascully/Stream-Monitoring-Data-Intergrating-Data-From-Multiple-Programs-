@@ -1,0 +1,48 @@
+---
+title: "EMPA Metadata"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+```{r}
+install.packages("xlsx")
+library(xlsx)
+library(stringr)
+
+```
+
+
+```{r}
+# Store base url (note the secure -- https:// -- url)
+# 2004-05 Phyciscal Habitat Data "https://www.epa.gov/sites/production/files/2014-10/phabbest.csv"
+#
+# 2008-2009 physical habitat Data "https://www.epa.gov/sites/production/files/2015-09/phabmed.csv"
+# 2008-2009 Benthic Macroinvertebrates metadata "https://www.epa.gov/sites/production/files/2015-09/bentcond.txt" 
+# 2008-2009 Benthic reference sites metric, MMI, and conditon class https://www.epa.gov/sites/production/files/2015-09/extbenthicrefcond.txt
+
+file_url <-  "https://www.epa.gov/sites/production/files/2015-09/extbenthicrefcond.txt"
+# import the data!
+EPA_Metadata <-  read.csv(file_url, sep="\t")
+head(EPA_Metadata)
+```
+```{r}
+#d<-setwd('...')
+directory <- 'C:/Users/rscully/Documents/Projects/Habitat Data Sharing/2019_2020/Code/tributary-habitat-data-sharing-'
+
+#string_len = str_length(file_url)
+string_len = nchar(file_url)
+
+u_name <- substr(file_url,string_len-18,string_len-4)
+u_name <-"08_09_extbenthicrefcond"
+file_name=paste0(d,"/Data/",u_name,".csv")
+#write.csv(EPA_Metadata, file = "C:/Users/rscully/Documents/Projects/USGS/Detail/Data/EPA/meta_data.csv", col.names = TRUE)
+write.csv(EPA_Metadata, file= file_name)
+
+```
+
+
+
