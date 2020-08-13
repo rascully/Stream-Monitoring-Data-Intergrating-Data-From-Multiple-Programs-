@@ -35,9 +35,12 @@ orginize_EPA_data <- function(sb_id,years){
       }
     } 
   
+  
 # Identify the data sets that are the physical habitat data   
   object_habitat=ls(pattern="Data_Physical_Habitat")
-    
+  
+  
+  # NEEE A WAY TO SORT OUT THE @))$ FIELS VS THE OTHER YEARS?? 
 #if there is more then one physical habitat data set join into one 
   if(length(object_habitat)>1){
       one <- get(object_habitat[1])
