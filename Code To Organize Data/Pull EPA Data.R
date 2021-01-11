@@ -21,7 +21,7 @@ sb_id<- "5ea9d6a082cefae35a21ba5a"
 #Download the list of weblinks holding the EPA data from the ScienceBase Item holding the data 
   web_links<- item_get_fields(sb_id, "webLinks")
   
-#Open all the data sets based on thand save with the name from the metadata  
+#Open all the data sets documented on ScienceBase and save with the name from the metadata  
    for(i in 1:length(web_links)){ 
     if(web_links[[i]][["type"]]=='webLink') {
      name      <- gsub(' ', '_', web_links[[i]][["title"]])
@@ -66,13 +66,13 @@ list_years <- c(2004, 2008)
       file_name <- paste0(getwd(),"/Data/", short_name)
       write.csv(data, file=file_name, row.names=FALSE)
         
-        if(any(str_detect(item_list_files(sb_id)$fname, short_name))){
-          item_replace_files(sb_id, file_name, title="")
-          print(1)
-          } else {
-            item_append_files(sb_id, file_name)
-            print(2)
-          }
+    if(any(str_detect(item_list_files(sb_id)$fname, short_name))){
+        item_replace_files(sb_id, file_name, title="")
+        print(1)
+        } else {
+          item_append_files(sb_id, file_name)
+          print(2)
+      }
       
       # Update the lastProcessed date to indicate the last time the code was run 
       sb_dates <- item_get_fields(sb_id, c('dates'))

@@ -58,7 +58,7 @@ data        <- st_read(dsn=fgdb, layer = fc_list[11])
 macro       <- st_read(dsn=fgdb, layer = fc_list[6])
 temp        <- st_read(dsn=fgdb, layer = fc_list[3])
 
-#rename a columen in the data file so the locaitons and the data can be joined on that columen 
+#rename a column in the data file so the locations and the data can be joined on that column 
 names(data)[names(data) == "site_id"] <- "SITE_ID"
 
 #Join the location information and the metric data 
