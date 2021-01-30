@@ -30,7 +30,7 @@ sb_id<- "5ea9d6a082cefae35a21ba5a"
   }  
 
 #The list of years the EPA data is collected and organized by  
-list_years <- c(2004, 2008)
+list_years <- c(2004, 2008, 2013)
   
   for (y in 1:length(list_years)){
     #Identify the list of data sets that are within a year 

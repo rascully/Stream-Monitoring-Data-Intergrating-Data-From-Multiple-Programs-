@@ -46,7 +46,7 @@ unzip("Data/NwfpWatershedCondition20yrReport.gdb.zip", exdir="Data")
 path <- '/Data/NwfpWatershedCondition20yrReport.gdb'
 fgdb <- paste0(wd, path)
 
-#invistigate the layers in the AREMP geodatabase 
+#investigate the layers in the AREMP geodatabase 
 subset(ogrDrivers(), grepl("GDB", name))
 fc_list <- ogrListLayers(fgdb)
 

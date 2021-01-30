@@ -1,14 +1,5 @@
-install.packages("dplyr") 
-install.packages("openxlsx")
-install.packages("tidyverse")
-install.packages("readxl")
-install.packages("sbtools")
-
-source("R/Function Record Level Table.R")
-test = RL_Table(sb_id, program)
-
-# Create one dataframe of a subset of metrcs across the four prorams 
-one_data_frame <- function() {
+#####Using the data exchange specifications combined monitoring stream data from multiple sources. #####
+# Load the libraries 
     library(dplyr)
     library(readxl)
     library(tidyverse)
@@ -20,62 +11,85 @@ one_data_frame <- function() {
     library(sp)
     library(sbtools)
     library(rgdal)
-        
-#list of programs Removed PIBO before publishing to ScienceBase (2020_3_17)     
-  program <-c('NRSA2004','NRSA2008','AIM','AREMP')
-  
-#Authenticate ScienceBase
-  SBUserName  <- readline(prompt="ScienceBase User Name: ")
-  SBPassword  <- readline(prompt="Password: ")
-  authenticate_sb(SBUserName, SBPassword)
 
+# Load the functions to build the data tables to the Stream Monitoring Data
+# Exchange Specifications in this repository: https://github.com/rascully/Stream-Monitoring-Data-Exchange-Specifications
+
+#List of programs to integrated data from. Can add PIBO when they release their data    
+program <-c('NRSA2004','NRSA2008','AIM','AREMP')
+
+
+##### Sign into ScienceBase and pull data set information #####
+SBUserName  <- readline(prompt="ScienceBase User Name: ")
+SBPassword  <- readline(prompt="Password: ")
+authenticate_sb(SBUserName, SBPassword)
 
 #ScienceBase ID of the parent item for integrating stream habitat metrics 
   sb_id <-"5e3c5883e4b0edb47be0ef1c"
   
-  #Get the list of programs from the parent ScienceBase Item 
+#Get the list of programs from the parent ScienceBase Item 
   sb_child <- item_list_children(sb_id)
-  
-#  for(i in 1:length(sb_child)){ 
- #   title[i] <- sb_child[[i]][["title"]]
-#    id[i]    <- sb_child[[i]][["id"]]
- #   }
-  
   #child_id <- rbind(title,id)
+
+######Create the Record Level Data Table #####
+  #Git Hub link to the Record Level table template 
+  github_link <- "https://raw.githubusercontent.com/rascully/Stream-Monitoring-Data-Exchange-Specifications/master/Tables/RecordLevel_table.csv" 
+  temp_file <- tempfile(fileext = ".csv")
+  req <- GET(github_link, 
+             # authenticate using GITHUB_PAT
+             authenticate(Sys.getenv("GITHUB_PAT"), ""),
+             # write result to disk
+             write_disk(path = temp_file))
+  RL<- read.csv(temp_file)
+  unlink(temp_file)
+  reach_level_table            <- data.frame(matrix(ncol=length(RL$Term), nrow=length(sb_child))) #create an empty dataframe to fill with the record level data exchange specifications 
   
-#get working directory 
-    wd <- getwd() #"C:/Users/rscully/Documents/Projects/Habitat Data Sharing/2019_2020/Code/tributary-habitat-data-sharing-/"
-   
-#open the the metadata file 
+  reach_level_table %>% 
+    mutate_all(as.character)
+  #name the columns 
+  colnames(reach_level_table)  <- RL$Term #name the columns in the dataframe with the Record Level terms 
+  
+  for(i in 1:length(sb_child)){ 
+    reach_level_table$datasetName[i] <- sb_child[[i]][["title"]]
+    reach_level_table$datasetID[i]      <- sb_child[[i]][["id"]]
+    }
+  reach_level_table$modified    <-   Sys.Date()
+  reach_level_table$type        <- "Stream Habitat Moitoring Data"
+  
+##### Open Git File Of Crosswalk #####
+    
    # metadata  <- as_tibble(read_xlsx(paste0(wd,"/Metadata.xlsx") , 3))
-    github_link <- "https://github.com/rascully/Stream-Monitoring-Data-Exchange-Specifications/blob/39f7ffd7bb5ac688c27de31498919daee4603751/Metadata.xlsx?raw=true"
-    temp_file <- tempfile(fileext = ".xlsx")
+    github_link <-"https://raw.githubusercontent.com/rascully/Stream-Monitoring-Data-Exchange-Specifications/master/Tables/Crosswalk.csv"
+    temp_file <- tempfile(fileext = ".csv")
+    
+    # get the git file and save the temp 
     req <- GET(github_link, 
                # authenticate using GITHUB_PAT
                authenticate(Sys.getenv("GITHUB_PAT"), ""),
                # write result to disk
                write_disk(path = temp_file))
-    metadata <- readxl::read_excel(temp_file, sheet = 3)
-     
-    SN        <- select(metadata, c(Category, LongName, Field, DataType ,AREMPField, AIMField, NRSA2008Field, NRSA2004Field, PIBOField, SubsetOfMetrics, InDES))
+    
+    metadata <- read.csv(file= temp_file)
+    SN        <- select(metadata, c(Category, LongName, Term, DataType ,AREMPField, AIMField, NRSA2008Field, NRSA2004Field, PIBOField))
     SN        <- as_tibble(lapply(SN, as.character))
+    subset_metrics <- SN 
     
     
-    #Covnert blankes to missing values 
-    SN  <-  mutate_all(SN, funs(na_if(.,"")))
+    #Convert blanks to missing values 
+    #SN  <-  mutate_all(SN, funs(na_if(.,"")))
 
     # Extract the subset of metrics we are focusing on 
-    subset_metrics <- SN %>% 
-                    filter(SubsetOfMetrics== "x" | InDES == 'x')
+    #subset_metrics <- SN %>% 
+     #               filter(SubsetOfMetrics== "x" | InDES == 'x')
     
     #save the list of the subset of metrics
-    write.csv(subset_metrics, file="SubSetOfMetricNames.csv", row.names=FALSE)
+    #write.csv(subset_metrics, file="SubSetOfMetricNames.csv", row.names=FALSE)
     
    # return(subset_metrics)
   
     #Create a variable holding the short names 
-    short_names <- subset_metrics$Field
-    data_types  <- subset_metrics$DataType
+    short_names <- SN$Term
+    data_types  <- SN$DataType
    
     #list of unique data types 
     unique_data_types <- unique(data_types)
@@ -86,32 +100,41 @@ one_data_frame <- function() {
     
 
   #For loop to add data from each program to one data set 
-        for(i in 1:length(program)) {
-        
-     #Program name removing year   
+  for(i in 1:length(program)) {
+      #Program name removing year   
         if (str_detect(program[i], "NRSA")){ 
             p <-  "NRSA"
-          }else{ 
-           p <- program[i] 
-          }
+           }else{ 
+             p <- program[i] 
+            }
 
         # find the ScienceBase ID for the program documentation 
-          for (c in 1: length(sb_child)){
-                  if(grepl(p, sb_child[[c]]$title)) {
-                    sb_child_id <- sb_child[[c]]$id
-                    print(sb_child[[c]]$id)
-                  }
-                }
-               
-          files <- item_list_files(sb_child_id)
+        index       <- str_detect(reach_level_table$datasetName, p)
+        sb_id_child <- reach_level_table$datasetID[index]
+        files       <- item_list_files(sb_id_child)
           
             #Load the data 
                 if (program[i]=="NRSA2008"){
-                    files <- files[grep("2008", files$fname), ]
-                    x=  item_file_download(sb_child_id, names=files$fname)
-                    data <-as_tibble(read.csv(paste0(wd, "/Data/EPA_NARS_Data0809.csv")))
-                  } else if (program[i]=="NRSA2004") {
-                    data<- as_tibble(read.csv(paste0(wd, "/Data/EPA_NARS_Data0405.csv")))
+               #Download the data from ScienceBase 
+                   f_name <-  files$fname[str_detect(files$fname, "2008")]
+                    file_name<- paste0(getwd(),"/data/", "EPA_2008.csv")
+                    item_file_download(sb_id_child, names= f_name, 
+                             destinations = file.path(file_name),overwrite_file = T)
+                    data <-as_tibble(read.csv(file_name))
+                   
+                #Fill in Reach Level table 
+                    index <- str_detect(reach_level_table$datasetName, "EPA")
+                    reach_level_table$InstitutionID[index]<- "EPA"
+                    reach_level_table$CollectionID[index]<- "NARS"
+                 
+                   } else if (program[i]=="NRSA2004") {
+                #Download the data from ScienceBase
+                     f_name <-  files$fname[str_detect(files$fname, "2004")]
+                     file_name<- paste0(getwd(),"/data/", "EPA_2004.csv")
+                     item_file_download(sb_id_child, names= f_name, 
+                                        destinations = file.path(file_name),overwrite_file = T)
+                     data<- as_tibble(read.csv(file_name))
+                    
                   } else if (program[i]=="BLM") { 
                     #create a URL to access the BLM Data
                     url <- list(hostname = "gis.blm.gov/arcgis/rest/services",
@@ -122,16 +145,36 @@ one_data_frame <- function() {
                                   outFields = "*",
                                   returnGeometry = "true",
                                   f = "geojson")) %>% 
-                      setattr("class", "url")
+                                  setattr("class", "url")
+                      
                     request <- build_url(url)
                     BLM <- st_read(request, stringsAsFactors = TRUE) #Load the file from the Data file 
                     data <- as_tibble(BLM)
+                  #Fill in Reach Level table 
+                    index <- str_detect(reach_level_table$datasetName, "BLM")
+                    reach_level_table$InstitutionID[index]<- "BLM"
+                    reach_level_table$CollectionID[index]<- "AIM"
+                  
                   } else if (program[i]=="PIBO"){ 
                     data <- as_tibble(read_xlsx("Data/PIBO_2013.xlsx", 2))
+                    #Fill in Reach_level table 
+                    index <- str_detect(reach_level_table$datasetName, "PIBO")
+                    reach_level_table$InstitutionID[index]<- "USFS"
+                    reach_level_table$CollectionID[index]<- "PIBO"
                   } else if (program[i]== "AREMP") {
-                    x 
-                    data <- as_tibble(read.csv(paste0(wd, "/Data/AREMP.csv")))
-                  }
+                #Download the data table from the ScienceBase item 
+                    f_name <-  files$fname[str_detect(files$fname)]
+                    file_name<- paste0(getwd(),"/data/", "AREMP.csv")
+                    item_file_download(sb_id_child, names= f_name, 
+                                       destinations = file.path(file_name),overwrite_file = T)
+                    data <-as_tibble(read.csv(file_name))
+                    
+                  
+                #Fill in Reach Level table 
+                    index <- str_detect(reach_level_table$datasetName, "AREMP")
+                    reach_level_table$InstitutionID[index]<- "USFS"
+                    reach_level_table$CollectionID[index]<- "AREMP"
+              }
          
           #create a column name to reference 
           column <- paste0(program[i],"Field")
@@ -156,7 +199,7 @@ one_data_frame <- function() {
           #Use index to sub set the data_types to the set of metrics that are in the program data set
           p_data_types = data_types[index]
           
-          #Assign a datatypes to each metric so it mactches the data frame   
+          #Assign a datatypes to each metric so it matches the data frame   
           SubSetData[p_data_types== "Double"]     <- sapply(SubSetData[p_data_types== "Double"], as.double)
           SubSetData[p_data_types== "Character"]  <- sapply(SubSetData[p_data_types=="Character"], as.character)
           SubSetData[p_data_types== "Date"]       <- sapply(SubSetData[p_data_types=="Date"], as.character)
@@ -192,7 +235,7 @@ one_data_frame <- function() {
        
 #Write the integrated dataset to ScenceBase   
     sb_id = "5e3c5883e4b0edb47be0ef1c"
-    item_replace_files(sb_id,file_path, title = "Intergrated Dataset")  
+    item_repslace_files(sb_id,file_path, title = "Intergrated Dataset")  
     
     
     if(any(str_detect(item_list_files(sb_id)$fname, short_name))){
@@ -214,9 +257,7 @@ one_data_frame <- function() {
       }
     } 
 
-    
-    
-        
+
 #create a list of sites with unique locations 
     u_locations <- select(all_data2, (c(locationID, verbatimLatitude, verbatimLongitude, verbatimWaterbody, Program)))
     unique_locations <- distinct(u_locations)
@@ -244,9 +285,6 @@ one_data_frame <- function() {
       }
     } 
     
-    
-    
-        
 #Save to GEOJason 
     locations <- select(all_data2, one_of("verbatimLongitude", "verbatimLatitude"))
     data      <- select(all_data2, -contains(c("verbatimLongitude","verbatimLatitude")))
@@ -256,7 +294,7 @@ one_data_frame <- function() {
 #Update ScienceBase Item 
     item_replace_files(sb_id, json_file, title="Intergrated Dataset") 
     
-# Update the lastProcessed date to indicate the last time the code was run 
+# Update the last Processed date to indicate the last time the code was run 
     sb_dates <- item_get_fields(sb_id, c('dates'))
     
     for(d in 1:length(sb_dates)){ 
@@ -267,6 +305,6 @@ one_data_frame <- function() {
     }      
 
 
-}
+
 
 
