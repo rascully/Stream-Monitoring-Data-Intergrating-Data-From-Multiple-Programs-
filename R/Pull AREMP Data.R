@@ -1,11 +1,6 @@
-#Download the AREMP data from the Geodatabase, create a tity data file and updload the file to ScienceBase. 
+#Download the AREMP data from the Geodatabase, create a tidy data file and upload the file to ScienceBase. 
 
-install.packages("rgdal")
-install.packages("downloader")
-install.packages('sp')
-install.packages('geojsonio')
-install.packages("sjmisc")
-install.packages("sbtools")
+
 library(rgdal)
 library(downloader) 
 library(sp)
@@ -19,6 +14,10 @@ library(sbtools)
 #Authenticate ScienceBase
 SBUserName  <- readline(prompt="ScienceBase User Name: ")
 SBPassword  <- readline(prompt="Password: ")
+authenticate_sb(SBUserName, SBPassword)
+
+SBUserName <- "rscully@usgs.gov"
+SBPassword <- "pnampUSGS69!"
 authenticate_sb(SBUserName, SBPassword)
 
 #Get URL of the AREMP dataset from ScienceBase 
@@ -47,7 +46,7 @@ unzip("Data/NwfpWatershedCondition20yrReport.gdb.zip", exdir="Data")
 path <- '/Data/NwfpWatershedCondition20yrReport.gdb'
 fgdb <- paste0(wd, path)
 
-#invistigate the layers in the AREMP geodatabase 
+#investigate the layers in the AREMP geodatabase 
 subset(ogrDrivers(), grepl("GDB", name))
 fc_list <- ogrListLayers(fgdb)
 
@@ -77,7 +76,12 @@ lat_long <- do.call(rbind, st_geometry(a_WGS84)) %>%
 table       <- (st_geometry(AREMP)<- NULL)
 AREMP_csv   <- bind_cols(AREMP, lat_long)
 
-file_name <- paste0(wd, "/Data/", Sys.Date(), "_Tity_AREMP.csv")
+#Delete the old AREMP data file 
+files <- list.files(paste0(getwd(), "/data"))
+files_remove <- paste0(getwd(), "/data/", files[str_detect(files, "AREMP")])
+file.remove(files_remove)
+
+file_name <- paste0(wd, "/data/Tity_AREMP_Data_Set.csv")
 write.csv(AREMP_csv, file=file_name, row.names=FALSE)
 item_replace_files(sb_id, file_name, title="")
 

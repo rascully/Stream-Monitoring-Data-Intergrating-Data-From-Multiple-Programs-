@@ -1,13 +1,27 @@
-#####Scraping EPA data from the EPA data webpage #####
+#####Scraping EPA National Aquatic Resources data 
 
+#This script is to pull data from the EPA data web page. Then we create a tidy data set from the 2004, 2008/09, 
+#2013/14 NRSA stream data sets with the Macrioneverterbreate, physical habitat and water chemistry metric and 
+#indicator data. The data set is then save to the GitHub page and the ScienceBase Item. 
 
+download_EPA_NRSA <- function(SBUserName, SBPassword) {
 library(tidyverse)
 library(rvest)
 library(stringr)
 library(httr)
+library(sbtools)
+
+#####Sign into ScienceBase to find the link to the EPA data site 
+#SBUserName  <- readline(prompt="ScienceBase User Name: ")
+#SBPassword  <- readline(prompt="ScienceBase Password: ")
+#SBUserName <- "rscully@usgs.gov"
+#SBPassword <- "pnampUSGS69!"
+authenticate_sb(SBUserName, SBPassword)
+sb_id<- "5ea9d6a082cefae35a21ba5a"
 
 ######Download all the data links from the EPA web site#####
-content <- read_html("https://www.epa.gov/national-aquatic-resource-surveys/data-national-aquatic-resource-surveys")
+web_links<- item_get_fields(sb_id, "webLinks")
+content <- read_html(web_links[[1]]$uri)
 
 tables <- content %>% 
   html_table(fill = TRUE) 
@@ -39,7 +53,6 @@ NARS <- EPA_table %>%
           filter(str_detect(Survey, "Streams"))
 
 #####Join the location tables to create one data set of all the stream data#####
-
 l_data_sets <- c("WSA Verification - Data",  "External Data: Site Information - Data", "NRSA 1314 Site Information - Data")
 location_data <- NARS %>% 
                 filter(str_detect(Indicator, "Site"))
@@ -125,12 +138,43 @@ for(link in metric_list$web1){
 
 data1<- data1 %>% 
         mutate(DATE_COMBIND = Sys.Date()) %>% 
-        mutate(PROGEAM = "EPA")
+        mutate(PROGRAM = "NRSA")
 
-write.csv(data1, file=paste0("Data/", Sys.Date(), "EPA_dataset.csv"))
+#####Remove duplicate fields#### 
 
-#Save the file to ScienceBase Item. If new add, if already exists just update the existing file. 
-short_name = paste0(Sys.Date(),"_Tidy_NARS_",list_years[y],".csv")
-file_name <- paste0(getwd(),"/Data/", short_name)
-write.csv(data, file=file_name, row.names=FALSE)
+#remove columns with .y indicating duplicate columns 
+data1<- data1 %>% 
+      select(-contains(c(".y", "x,x", "y.y")))
 
+#Rename columns with .x, so that field names match the original fields in the metadata 
+names(data1) <- str_remove(names(data1), ".x")
+
+
+#Delete the old EPA data file 
+files <- list.files(paste0(getwd(), "/data"))
+files_remove <- paste0(getwd(), "/data/", files[str_detect(files, "NRSA")])
+file.remove(files_remove)
+
+
+#####Save the Tidy Data set to Sciencebase#####
+short_name = paste0("Tidy_NRSA_Data_Set.csv")
+file_name <- paste0("data/", short_name)
+
+write.csv(data1, file=file_name)
+
+
+if(any(str_detect(item_list_files(sb_id)$fname, short_name))){
+    item_replace_files(sb_id, file_name, title="")
+  } else {
+    item_append_files(sb_id, file_name)
+}
+
+##### Update the last Processed date to indicate the last time the code was run. 
+sb_dates <- item_get_fields(sb_id, c('dates'))
+sb_dates[[1]][["dateString"]] <- as.character(Sys.Date())
+
+# This does not work? No error messsage? Don't understand the issue? 
+items_update(sb_id, info = list(dates = sb_dates)) 
+
+return(data1)
+} 

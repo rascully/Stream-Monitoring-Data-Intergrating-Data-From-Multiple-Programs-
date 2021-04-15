@@ -1,11 +1,5 @@
 #Download the AREMP data from the Geodatabase, create a tity data file and updload the file to ScienceBase. 
 
-install.packages("rgdal")
-install.packages("downloader")
-install.packages('sp')
-install.packages('geojsonio')
-install.packages("sjmisc")
-install.packages("sbtools")
 library(rgdal)
 library(downloader) 
 library(sp)
@@ -17,8 +11,8 @@ library(sbtools)
 
 
 #Authenticate ScienceBase
-SBUserName  <- readline(prompt="ScienceBase User Name: ")
-SBPassword  <- readline(prompt="Password: ")
+#SBUserName  <- readline(prompt="ScienceBase User Name: ")
+#SBPassword  <- readline(prompt="Password: ")
 authenticate_sb(SBUserName, SBPassword)
 
 #Get URL of the AREMP dataset from ScienceBase 
@@ -76,7 +70,7 @@ lat_long <- do.call(rbind, st_geometry(a_WGS84)) %>%
 table       <- (st_geometry(AREMP)<- NULL)
 AREMP_csv   <- bind_cols(AREMP, lat_long)
 
-file_name <- paste0(wd, "/Data/", Sys.Date(), "_Tity_AREMP.csv")
+file_name <- paste0(wd, "/Data/", Sys.Date(), "_Tity_AREMP_Data_Set.csv")
 write.csv(AREMP_csv, file=file_name, row.names=FALSE)
 item_replace_files(sb_id, file_name, title="")
 
