@@ -92,10 +92,9 @@ Each program releases its data in different ways. EPA NARS releases data online 
 ```{r}
 CRS<-  "+proj=longlat +datum=WGS84 +no_defs"
 
-#SBUserName  <- readline(prompt="ScienceBase User Name: ")
-#SBPassword  <- readline(prompt="ScienceBase Password: ")
-SBUserName <- "rscully@usgs.gov"
-SBPassword <- "pnampUSGS79!"
+SBUserName  <- readline(prompt="ScienceBase User Name: ")
+SBPassword  <- readline(prompt="ScienceBase Password: ")
+
 ```
 ##EPA Rivers and Streams Data 
 

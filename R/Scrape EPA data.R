@@ -14,8 +14,7 @@ library(sbtools)
 #####Sign into ScienceBase to find the link to the EPA data site 
 #SBUserName  <- readline(prompt="ScienceBase User Name: ")
 #SBPassword  <- readline(prompt="ScienceBase Password: ")
-#SBUserName <- "rscully@usgs.gov"
-#SBPassword <- "pnampUSGS69!"
+
 authenticate_sb(SBUserName, SBPassword)
 sb_id<- "5ea9d6a082cefae35a21ba5a"
 
